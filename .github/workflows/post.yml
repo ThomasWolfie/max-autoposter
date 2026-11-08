@@ -1,0 +1,38 @@
+name: Daily post
+
+on:
+  schedule:
+    - cron: "0 7 * * *"   # 07:00 UTC = 10:00 Moscow, every day
+  workflow_dispatch: {}    # lets you run it by hand from the Actions tab
+
+permissions:
+  contents: write          # needed to save posted.json back to the repo
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Publish due posts
+        env:
+          X_API_KEY: ${{ secrets.X_API_KEY }}
+          X_API_SECRET: ${{ secrets.X_API_SECRET }}
+          X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_SECRET: ${{ secrets.X_ACCESS_SECRET }}
+          THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
+          THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL: ${{ secrets.TELEGRAM_CHANNEL }}
+          IMAGE_BASE_URL: https://raw.githubusercontent.com/${{ github.repository }}/main/images
+        run: python3 poster.py
+      - name: Save what was posted
+        if: always()
+        run: |
+          git config user.name "autoposter"
+          git config user.email "autoposter@users.noreply.github.com"
+          git add posted.json || true
+          git diff --cached --quiet || git commit -m "posted $(date -u +%F)"
+          git push
